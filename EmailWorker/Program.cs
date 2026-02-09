@@ -1,26 +1,30 @@
 ﻿using EmailWorker.Applications.Interfaces;
+using EmailWorker.Infrastructures;
 using EmailWorker.Infrastructures.Email;
 using EmailWorker.Infrastructures.Messaging;
 using EmailWorker.Workers;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// Config
+
 builder.Services.Configure<RabbitMqOptions>(
     builder.Configuration.GetSection("RabbitMQ"));
 
-// Services
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"));
+});
+
+
 builder.Services.AddSingleton<IEmailService, SmtpEmailService>();
 
-// Worker
-builder.Services.AddHostedService<SendOrderEmailWorker>();
 
-//builder.Configuration
-//    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-//    .AddEnvironmentVariables();
+builder.Services.AddHostedService<SendOrderEmailWorker>();
 
 var host = builder.Build();
 host.Run();

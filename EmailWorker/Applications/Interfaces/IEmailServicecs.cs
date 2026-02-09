@@ -1,4 +1,5 @@
 ﻿using EmailWorker.Applications.Interfaces.DTO;
+using EmailWorker.Entity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,6 @@ namespace EmailWorker.Applications.Interfaces
 {
     public interface IEmailService
     {
-        Task SendAsync(EmailRequestDTO request);
+        Task SendAsync(OutboxMessage request);
     }
 }
