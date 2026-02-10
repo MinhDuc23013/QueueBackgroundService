@@ -11,6 +11,7 @@ namespace EmailWorker.Enum
         New,
         Processing,
         Published,
+        Sent,
         Failed
     }
 }

@@ -30,47 +30,61 @@ namespace EmailWorker.Infrastructures.Email
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            await using var tx = await db.Database.BeginTransactionAsync();
+            var now = DateTime.UtcNow;
+
+            var rows = await db.Database.ExecuteSqlInterpolatedAsync($@"
+                    UPDATE OutboxMessages
+                    SET Status = {OutboxStatus.Sent.ToString()},
+                        ProcessingAt = {now}
+                    WHERE Id = {request.Id}
+                      AND Status IN ({OutboxStatus.Published.ToString()})
+                ");
+
+            if (rows == 0)
+            {
+                Console.WriteLine($"Skip {request.Id} - already processed by another worker");
+                return;
+            }
 
             var message = await db.OutboxMessages
                 .Where(x => x.Id == request.Id)
-                .FirstOrDefaultAsync();
+                .FirstAsync();
 
-            if (message == null)
+            try
             {
-                Console.WriteLine("Message not found - Id:" + request.Id.ToString());
-                return; 
+                Console.WriteLine($"Sending email for {message.Id}");
+
+                SendEmail(message);
+
+                message.Status = OutboxStatus.Sent.ToString();
+                message.PublishedAt = DateTime.UtcNow;
+            }
+            catch (Exception ex)
+            {
+                message.Status = OutboxStatus.Failed.ToString();
+                //message.Error = ex.Message;
+                throw;
             }
 
-            //if (message.Status == OutboxStatus.Sent.ToString())
-            //    return; // đã gửi rồi → idempotent exit
-
-            //if (message.Status == OutboxStatus.Processing.ToString())
-            //    return; // instance khác đang xử lý
-
-
-
-            await tx.CommitAsync();
-
-            Console.WriteLine($"Sending email to {message.Id} with subject {message.Type}");
-
-            //message.Status = OutboxStatus.Sent.ToString();
-            message.PublishedAt = DateTime.UtcNow;
-
-            //try
-            //{
-
-
-            //}
-            //catch
-            //{
-            //    message.Status = OutboxStatus.Failed;
-            //    throw new SmtpException(
-            //        SmtpStatusCode.MailboxBusy,
-            //        "Mailbox busy – retry later");
-            //}
-
             await db.SaveChangesAsync();
+        }
+        public bool SendEmail(OutboxMessage message)
+        {
+            try
+            {
+                var payload = System.Text.Json.JsonSerializer.Deserialize<EmailRequestDTO>(message.Payload);
+                Console.WriteLine($"Sending email to {payload?.To} with subject {payload?.Template}");
+                //var mailMessage = new MailMessage(""
+                //    , message.Destination);
+                //mailMessage.Subject = "Order Confirmation";
+                //mailMessage.Body = message.Payload;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to send email to {message.Destination}: {ex.Message}");
+                return false;
+            }
         }
     }
 }
