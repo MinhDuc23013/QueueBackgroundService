@@ -47,7 +47,6 @@ namespace EmailWorker.Workers
                 Password = _options.Password ?? "guest",
                 DispatchConsumersAsync = true,
 
-                // ⭐ quan trọng
                 AutomaticRecoveryEnabled = true,
                 NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
             };
@@ -157,7 +156,7 @@ namespace EmailWorker.Workers
             props.Headers["x-error-type"] = ex.GetType().Name;
             props.Headers["x-last-retry-at"] = DateTime.UtcNow.ToString("O");
 
-            // ⭐ TTL per message
+            
             props.Expiration = delayMs.ToString();
 
             _channel.BasicPublish(

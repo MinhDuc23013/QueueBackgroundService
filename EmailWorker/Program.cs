@@ -24,7 +24,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddSingleton<IEmailService, SmtpEmailService>();
 
 
-builder.Services.AddHostedService<SendOrderEmailWorker>();
+//builder.Services.AddHostedService<SendOrderEmailWorker>();
+builder.Services.AddHostedService<KafkaOrderConsumer>();
 
 var host = builder.Build();
 host.Run();
